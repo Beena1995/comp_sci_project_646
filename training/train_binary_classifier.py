@@ -1,0 +1,77 @@
+import torch.nn.functional as F
+from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import f1_score
+from tqdm import tqdm
+import numpy as np
+import os
+import pandas as pd
+from pathlib import Path
+from sklearn.model_selection import train_test_split
+from training.utils_training import *
+from training.train_eval import *
+import bert_representations
+from bert_representations import create_bert_representations
+import DistillBERTClassBinary
+import train_eval
+from train_eval import fit
+import utils_training
+from utils_training import num_steps
+def create_data_frame(df,esci_label2gain):
+    df['gain'] = df['esci_label'].apply(lambda esci_label: esci_label2gain[esci_label])
+
+def split_data(df):
+    train_data_df, val_data_df = train_test_split(df_excat,test_size=0.3,random_state=42)
+    return train_data_df,val_data_df
+
+def training_representations(train_df):
+    train_data = create_bert_representations(train_data_df['expanded_query'].to_list(),train_data_df['product_title'].to_list(),train_data_df['gain'].to_list(),tokenizer,batch_size=16,max_length=512,pad_to_max_length=True,return_attention_mask=True,return_tensors='pt',path="train")
+    return train_data
+
+def validation_representations(val_df):
+    val_data = create_bert_representations(train_data_df['expanded_query'].to_list(),train_data_df['product_title'].to_list(),train_data_df['gain'].to_list(),tokenizer,batch_size=16,max_length=512,pad_to_max_length=True,return_attention_mask=True,return_tensors='pt',path="train")
+    return val_data
+
+def train(df,labels):
+    create_data_frame(df,labels)
+    train_data_df,val_data_df = split_data(df)
+    train_data = training_representations(train_data_df)
+    val_data = validation_representations(val_data_df)
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model = DistillBERTClassBinary()
+    optimizer = AdamW(model_excat.parameters(),lr=5e-5)
+    eval_sampler = SequentialSampler(val_data)
+    train_dataloader = DataLoader(train_data,shuffle=True, batch_size=args['train_batch_size'])
+    eval_dataloader = DataLoader(val_data, sampler=eval_sampler, batch_size=args['eval_batch_size'])
+    model.freeze_bert_encoder()
+    num_train_steps = num_steps(df)
+    fit(1)
+    model.unfreeze_bert_encoder()
+    num_steps
+    fit()
+    eval_binary()
+
+def main():
+    df = pd.read_csv("./sampled_query_expansion.csv")
+    labels_excat,labels_sub,labels_com,labels_ir =  {'E' : 1,'S' : 0,'C' : 0,'I' : 0},{'E' : 0,'S' : 1,'C' : 0,'I' : 0},{'E' : 0,'S' : 0,'C' : 1,'I' : 0},{'E' : 0,'S' : 0,'C' : 0,'I' : 1}
+    train(df.copy(True), labels_excat)
+    train(df.copy(True), labels_sub)
+    train(df.copy(True), labels_com)
+    train(df.copy(True), labels_ir)
+
+if __name__ == '__main__':
+    main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
