@@ -1,0 +1,22 @@
+{
+    "cfg" : {
+        "train_size": -1,
+        "val_size": -1,
+        "task_name": "toxic_multilabel",
+        "no_cuda": true,
+        "bert_model": "distilbert-base-uncased",
+        "max_seq_length": 512,
+        "do_train": true,
+        "do_eval": true,
+        "do_lower_case": true,
+        "train_batch_size": 16,
+        "eval_batch_size": 32,
+        "learning_rate": 3e-5,
+        "num_train_epochs": 3.0,
+        "warmup_proportion": 0.1,
+        "local_rank": -1,
+        "seed": 42,
+        "gradient_accumulation_steps": 1,
+        "loss_scale": 128
+    }
+}
