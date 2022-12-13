@@ -41,3 +41,8 @@ def convert_to_all_labels(index):
 def load_config():
     with open('./config.json', 'r') as f:
         config = json.load(f)
+
+def load_model(model, path):
+  state = torch.load(os.path.join(args['output_dir'], path))
+  model.load_state_dict(state['model_state_dict'])
+  model.to(device)

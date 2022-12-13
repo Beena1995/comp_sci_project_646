@@ -135,7 +135,59 @@ def fit(epoch = 0 , num_epochs = args['num_train_epochs']):
                 optimizer.step()
                 optimizer.zero_grad()
                 global_step += 1
+                
         #eval()
 
-# add fit for student
+def fit_student(epoch,max_epoch = args['num_train_epochs']):
+    student_model.train()
+    teacher_model.eval(),binary_excat.eval(),binary_sub.eval(),binary_com.eval(),binary_ir.eval()
+    global_step = 0
+    epoch = epoch
+    for i_ in tqdm(range(epoch,int(max_epoch)), desc="Epoch"):
+        epoch +=1
+        tr_loss = 0
+        nb_tr_examples, nb_tr_steps = 0, 0
+    for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
+        batch = tuple(t.to(device) for t in batch)
+        input_ids, input_mask, label_ids = batch
+        student_logits = student_model(input_ids,input_mask)
+        student_loss_1 = loss_function_student(student_logits,label_ids)
+      
+        with torch.no_grad():
+            teacher_logits = teacher_model(input_ids,input_mask)
+            excat_logits = binary_excat(input_ids,input_mask)
+            loss_excat  = loss_function(excat_logits.squeeze(), label_ids.float())
+=            sub_logits = binary_sub(input_ids,input_mask)
+            loss_subt = loss_function(sub_logits.squeeze(), label_ids.float())
+            com_logits = binary_com(input_ids,input_mask)
+            loss_com = loss_function(com_logits.squeeze(), label_ids.float())
+            ir_logits = binary_ir(input_ids,input_mask)
+            loss_ir = loss_function(ir_logits.squeeze(), label_ids.float())
+            #print(ir_logits)
+            binary_logits = torch.cat((torch.sigmoid(ir_logits),torch.sigmoid(com_logits),torch.sigmoid(sub_logits),torch.sigmoid(excat_logits)),dim=1)
+            soft_targets = 0.65 * teacher_logits + 0.35 * binary_logits
+            #added_distil_logits = added_distil_logits/torch.norm(added_distil_logits)
+        #distil_loss = loss_function_distil(F.log_softmax(input=(student_logits/2),dim=1),F.softmax(input=(added_distil_logits/2),dim=1))
+        student_loss_2 = loss_function_student(student_logits,soft_targets)
+        print("distil_loss",student_loss_2)
+        loss = 0.3 * student_loss_1 + 0.7 * student_loss_2
+
+
+        loss.backward()
+        tr_loss += loss.item()
+        nb_tr_examples += input_ids.size(0)
+        nb_tr_steps += 1
+        big_val, big_idx = torch.max(student_logits.data, dim=1)
+        n_correct = accuracy(big_idx, label_ids)
+       
+        if (step + 1) % args['gradient_accumulation_steps'] == 0:
+              
+    #             scheduler.batch_step()
+                # modify learning rate with special warm up BERT uses
+            lr_this_step = args['learning_rate'] * warmup_linear(global_step/num_train_steps, args['warmup_proportion'])
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr_this_step
+            optimizer.step()
+            optimizer.zero_grad()
+            global_step += 1
 
